@@ -1,0 +1,298 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  STUDENT
+  ADMIN
+}
+
+enum TransactionType {
+  BORROW
+  RENT
+  SELL
+  EXCHANGE
+}
+
+enum ItemStatus {
+  AVAILABLE
+  UNAVAILABLE
+  INACTIVE
+}
+
+enum BorrowRequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED
+  COMPLETED
+}
+
+enum TransactionStatus {
+  ACTIVE
+  RETURN_PENDING
+  COMPLETED
+  OVERDUE
+  CANCELLED
+}
+
+enum UrgentRequestStatus {
+  OPEN
+  CLOSED
+  FULFILLED
+}
+
+enum ReportStatus {
+  PENDING
+  INVESTIGATING
+  RESOLVED
+  DISMISSED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  profileImage String?
+  hostel       String?
+  role         UserRole @default(STUDENT)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  ownedItems       Item[]            @relation("UserOwnedItems")
+  borrowRequests   BorrowRequest[]   @relation("UserBorrowRequests")
+  ownedBorrowRequests BorrowRequest[] @relation("UserBorrowRequestOwners")
+  borrowedItems    Transaction[]     @relation("UserBorrowedItems")
+  lentItems        Transaction[]     @relation("UserLentItems")
+  sentMessages     Message[]         @relation("UserSentMessages")
+  receivedMessages Message[]         @relation("UserReceivedMessages")
+  notifications    Notification[]
+  reviewsGiven     Review[]          @relation("UserReviewsGiven")
+  reviewsReceived  Review[]          @relation("UserReviewsReceived")
+  urgentRequests   UrgentRequest[]
+  reportsCreated   Report[]          @relation("UserReportsCreated")
+  reportsReceived  Report[]          @relation("UserReportsReceived")
+
+  @@index([email])
+  @@index([role])
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+
+  // Relations
+  items          Item[]         @relation("CategoryItems")
+  urgentRequests UrgentRequest[]
+
+  @@index([name])
+}
+
+model Item {
+  id             String          @id @default(cuid())
+  ownerId        String
+  categoryId     String
+  title          String
+  description    String
+  transactionType TransactionType
+  condition      String
+  price          Float?
+  deposit        Float?
+  location       String
+  availableFrom  DateTime
+  availableUntil DateTime
+  status         ItemStatus      @default(AVAILABLE)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  // Relations
+  owner          User           @relation("UserOwnedItems", fields: [ownerId], references: [id], onDelete: Cascade)
+  category       Category       @relation("CategoryItems", fields: [categoryId], references: [id])
+  images         ItemImage[]
+  borrowRequests BorrowRequest[]
+  transactions   Transaction[]
+  reports        Report[]
+
+  @@index([ownerId])
+  @@index([categoryId])
+  @@index([status])
+  @@index([transactionType])
+  @@index([availableFrom, availableUntil])
+}
+
+model ItemImage {
+  id        String   @id @default(cuid())
+  itemId    String
+  imageUrl  String
+  createdAt DateTime @default(now())
+
+  // Relations
+  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([itemId])
+}
+
+model BorrowRequest {
+  id          String              @id @default(cuid())
+  itemId      String
+  requesterId String
+  ownerId     String
+  startDate   DateTime
+  endDate     DateTime
+  message     String?
+  status      BorrowRequestStatus @default(PENDING)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  // Relations
+  item       Item        @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  requester  User        @relation("UserBorrowRequests", fields: [requesterId], references: [id], onDelete: Cascade)
+  owner      User        @relation("UserBorrowRequestOwners", fields: [ownerId], references: [id], onDelete: Cascade)
+  transaction Transaction?
+
+  @@index([itemId])
+  @@index([requesterId])
+  @@index([ownerId])
+  @@index([status])
+  @@index([startDate, endDate])
+}
+
+model Transaction {
+  id               String            @id @default(cuid())
+  requestId        String            @unique
+  itemId           String
+  borrowerId       String
+  ownerId          String
+  borrowedAt       DateTime          @default(now())
+  expectedReturnAt DateTime
+  returnedAt       DateTime?
+  status           TransactionStatus @default(ACTIVE)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  // Relations
+  borrowRequest BorrowRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  item          Item          @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  borrower      User          @relation("UserBorrowedItems", fields: [borrowerId], references: [id], onDelete: Cascade)
+  owner         User          @relation("UserLentItems", fields: [ownerId], references: [id], onDelete: Cascade)
+  reviews       Review[]
+
+  @@index([requestId])
+  @@index([itemId])
+  @@index([borrowerId])
+  @@index([ownerId])
+  @@index([status])
+  @@index([expectedReturnAt])
+}
+
+model Review {
+  id             String   @id @default(cuid())
+  reviewerId     String
+  reviewedUserId String
+  transactionId  String
+  rating         Int      // 1-5
+  comment        String?
+  createdAt      DateTime @default(now())
+
+  // Relations
+  reviewer     User        @relation("UserReviewsGiven", fields: [reviewerId], references: [id], onDelete: Cascade)
+  reviewedUser User        @relation("UserReviewsReceived", fields: [reviewedUserId], references: [id], onDelete: Cascade)
+  transaction  Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@index([reviewerId])
+  @@index([reviewedUserId])
+  @@index([transactionId])
+  @@index([rating])
+}
+
+model Message {
+  id         String    @id @default(cuid())
+  senderId   String
+  receiverId String
+  requestId  String?
+  content    String
+  readAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  // Relations
+  sender   User @relation("UserSentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("UserReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([requestId])
+  @@index([readAt])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([read])
+  @@index([createdAt])
+}
+
+model UrgentRequest {
+  id             String             @id @default(cuid())
+  userId         String
+  categoryId     String
+  requestedItem  String
+  description    String
+  requiredDate   DateTime
+  duration       Int
+  location       String
+  status         UrgentRequestStatus @default(OPEN)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  // Relations
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([categoryId])
+  @@index([status])
+  @@index([requiredDate])
+}
+
+model Report {
+  id             String       @id @default(cuid())
+  reporterId     String
+  reportedUserId String
+  itemId         String?
+  reason         String
+  description    String
+  status         ReportStatus @default(PENDING)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  // Relations
+  reporter  User  @relation("UserReportsCreated", fields: [reporterId], references: [id], onDelete: Cascade)
+  reported  User  @relation("UserReportsReceived", fields: [reportedUserId], references: [id], onDelete: Cascade)
+  item      Item? @relation(fields: [itemId], references: [id], onDelete: SetNull)
+
+  @@index([reporterId])
+  @@index([reportedUserId])
+  @@index([itemId])
+  @@index([status])
+}

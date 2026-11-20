@@ -1,0 +1,74 @@
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700;800&family=Caveat+Brush:wght@400;500;600;700&display=swap');
+
+@import "tailwindcss";
+
+:root {
+  --background: #FFF9EF;
+  --foreground: #202020;
+  --primary: #F47113;
+  --secondary: #763B32;
+  --red: #DC2626;
+  --success: #086353;
+  --card-bg: #FFFFFF;
+  --accent-yellow: #F3C11B;
+  --black: #000000;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-secondary: var(--secondary);
+  --color-red: var(--red);
+  --color-success: var(--success);
+  --color-card-bg: var(--card-bg);
+  --color-accent-yellow: var(--accent-yellow);
+  --color-black: var(--black);
+  --font-heading: 'Baloo 2', cursive;
+  --font-body: 'Caveat Brush', cursive;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: 'Caveat Brush', cursive;
+}
+
+/* Marketplace-specific styles */
+.marketplace-card {
+  background: var(--card-bg);
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.marketplace-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.marketplace-btn-primary {
+  background: var(--primary);
+  color: white;
+  border-radius: 6px;
+  font-weight: 600;
+  transition: background 0.2s ease;
+}
+
+.marketplace-btn-primary:hover {
+  background: var(--success);
+}
+
+.marketplace-input {
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 8px 12px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.marketplace-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(244, 113, 19, 0.1);
+}
